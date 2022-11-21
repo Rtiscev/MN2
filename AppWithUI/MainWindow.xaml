@@ -1,0 +1,45 @@
+﻿<Window x:Class="AppWithUI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="518" Width="856">
+    <StackPanel>
+        <StackPanel.Resources>
+            <Style TargetType="TextBlock">
+                <Setter Property="FontSize" Value="24"></Setter>
+            </Style>
+            <Style TargetType="TextBox">
+                <Setter Property="FontSize" Value="24"></Setter>
+            </Style>
+        </StackPanel.Resources>
+        <WrapPanel>
+            <TextBlock>Введите размер матрицы:</TextBlock>
+            <TextBox Name="Rows" Width="30" TextAlignment="Right"></TextBox>
+            <TextBlock>x</TextBlock>
+            <TextBox Margin="0 0 40 0" Name="Columns" Width="30" TextAlignment="Left"></TextBox>
+
+            <Button Click="Fill_with_mine">Кастомный</Button>
+            <Button Click="Random_fill">Рандом</Button>
+            <Button Click="Button_Click">Ввести систему</Button>
+            <Button Click="Solve_equation">Решить систему</Button>
+            <Button>Открыть Word</Button>
+            <Button>Открыть Pdf</Button>
+        </WrapPanel>
+        <TextBlock>Введите уравнение:</TextBlock>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Vertical">
+                <Viewbox Stretch="Uniform">
+                    <Grid Name="GridManipulation">
+
+                    </Grid>
+                </Viewbox>
+            </StackPanel>
+        </Grid>
+    </StackPanel>
+</Window>
