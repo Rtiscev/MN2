@@ -19,13 +19,9 @@
             <TextBox Name="Rows" Width="30" TextAlignment="Right"></TextBox>
             <TextBlock>x</TextBlock>
             <TextBox Margin="0 0 40 0" Name="Columns" Width="30" TextAlignment="Left"></TextBox>
-
-            <Button Click="Fill_with_mine">Кастомный</Button>
             <Button Click="Random_fill">Рандом</Button>
             <Button Click="Button_Click">Ввести систему</Button>
             <Button Click="Solve_equation">Решить систему</Button>
-            <Button>Открыть Word</Button>
-            <Button>Открыть Pdf</Button>
         </WrapPanel>
         <TextBlock>Введите уравнение:</TextBlock>
         <Grid>
@@ -41,5 +37,10 @@
                 </Viewbox>
             </StackPanel>
         </Grid>
+        <WrapPanel>
+            <TextBlock>Решить методом:</TextBlock>
+            <RadioButton Name="method_Jordan" VerticalAlignment="Center" Margin="10,5,1,1" GroupName="Method">Жордан - Гаус</RadioButton>
+            <RadioButton Name="method_Jacobi" VerticalAlignment="Center" Margin="10,5,1,1" GroupName="Method">Якоби</RadioButton>
+        </WrapPanel>
     </StackPanel>
 </Window>

@@ -1,103 +1,184 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using System.Collections.Generic;
 using Word = Microsoft.Office.Interop.Word;
 
 namespace AppWithUI
 {
     public class WordProc
     {
-        public void word(ref List<List<TextBox>> A, ref List<TextBox> B)
+        public void word(ref List<List<TextBox>> A, ref List<TextBox> B, string chosenMethod)
         {
-            #region Basic Setup
+            List<List<TextBox>> copyA = new();
+            List<TextBox> copyB = new();
+            copyA = A;
+            copyB = B;
 
             int n, m;
             n = A.Count;
             m = A[0].Count - 1;
-            List<bool> used = new List<bool>();
-            for (int i = 0; i < m; i++)
-            {
-                used.Add(false);
-            }
-
-            #endregion
-
-            #region Basic Logic
-
-            List<string> Marks = new();
             Fuac sample = new();
-            bool should_i_go = true;
-            sample.InsertTable(ref A, ref B, ref Marks, 0, -1);
 
-            for (int main = 0; main < A.Count && should_i_go; main++)
+            switch (chosenMethod)
             {
-                bool chek = check_if_alike(ref A);
-                if (chek)
-                {
-                    sample.InsertText("Система не совместна, т.к. есть одинаковые строки");
-                    should_i_go = false;
-                    break;
-                }
-
-                int RsLocation = get_min(ref A, main, ref used);
-                Marks.Add("X" + (RsLocation + 1));
-
-                double Rs = Convert.ToDouble(A[main][RsLocation].Text);
-                sample.InsertText($"Разрешающий элемент : {Rs}");
-
-                sample.InsertTable(ref A, ref B, ref Marks, main, RsLocation);
-                for (int i = 0; i < A.Count; i++)
-                {
-                    if (i == main)
-                        continue;
-
-                    double temq = Convert.ToDouble(B[i].Text);
-                    temq -= Convert.ToDouble(B[main].Text) * Convert.ToDouble(A[i][RsLocation].Text) / Rs;
-                    temq = Math.Round(temq, 4);
-                    B[i].Text = temq.ToString();
-
-                    for (int j = 0; j < A[i].Count - 1; j++)
+                case "Jacobi":
                     {
-                        if ((Convert.ToDouble(A[i][j].Text) == 0) || (j == RsLocation))
-                            continue;
+                        double epsilon = Math.Pow(10, -2);
+                        double error = 0;
 
-                        double qik = Convert.ToDouble(A[i][j].Text);
-                        qik -= Convert.ToDouble(A[main][j].Text) * Convert.ToDouble(A[i][RsLocation].Text) / Rs;
-                        qik = Math.Round(qik, 4);
-                        A[i][j].Text = qik.ToString();
+                        List<double> startvalues = new();
+                        List<double> Xvalues = new();
+
+                        for (int i = 0; i < n; i++)
+                        {
+                            startvalues.Add(0);
+                        }
+                        Xvalues.AddRange(startvalues);
+                        Xvalues.AddRange(startvalues);
+
+                        permutations(ref copyA, ref copyB);
+                        sample.insertHeader(ref Xvalues);
+                        int step = 0;
+                        do
+                        {
+                            sample.InsertJacobiTable(ref Xvalues, step++, error);
+                            for (int i = 0; i < n; i++)
+                            {
+                                Xvalues[i + n] = (1 / Convert.ToDouble(A[i][i].Text)) * (Convert.ToDouble(B[i].Text) + Calculations(ref A, ref Xvalues, i));
+                            }
+
+                            error = finderror(ref Xvalues);
+
+                            for (int i = 0; i < n; i++)
+                            {
+                                Xvalues[i] = Xvalues[i + n];
+                            }
+
+                        } while (error > epsilon);
                     }
-                }
-                divide_the_row(ref A, ref B, RsLocation, main);
-                sample.InsertText($"После обнуления x{RsLocation + 1} столбца");
-                nullify_the_column(ref A, RsLocation, main);
-                sample.InsertTable(ref A, ref B, ref Marks, main, RsLocation);
-                IfHasLineIsZero(ref A, ref B);
-            }
+                    break;
+                case "Jordan-Gaus":
+                    {
+                        List<bool> used = new();
+                        for (int i = 0; i < m; i++)
+                        {
+                            used.Add(false);
+                        }
+                        List<string> Marks = new();
+                        bool should_i_go = true;
+                        sample.InsertJordanTable(ref A, ref B, ref Marks, 0, -1);
 
-            if (should_i_go)
-            {
-                sample.InsertText("Решённая таблица:");
-                sample.InsertTable(ref A, ref B, ref Marks, 0, -1);
-                sample.InsertText("Ответ:");
-                result(A, B);
+                        for (int main = 0; main < A.Count && should_i_go; main++)
+                        {
+                            bool chek = check_if_alike(ref A);
+                            if (chek)
+                            {
+                                sample.InsertText("Система не совместна, т.к. есть одинаковые строки");
+                                should_i_go = false;
+                                break;
+                            }
+
+                            int RsLocation = get_min(ref A, main, ref used);
+                            Marks.Add("X" + (RsLocation + 1));
+
+                            double Rs = Convert.ToDouble(A[main][RsLocation].Text);
+                            sample.InsertText($"Разрешающий элемент : {Rs}");
+
+                            sample.InsertJordanTable(ref A, ref B, ref Marks, main, RsLocation);
+                            for (int i = 0; i < A.Count; i++)
+                            {
+                                if (i == main)
+                                    continue;
+
+                                double temq = Convert.ToDouble(B[i].Text);
+                                temq -= Convert.ToDouble(B[main].Text) * Convert.ToDouble(A[i][RsLocation].Text) / Rs;
+                                temq = Math.Round(temq, 2);
+                                B[i].Text = temq.ToString();
+
+                                for (int j = 0; j < A[i].Count - 1; j++)
+                                {
+                                    if ((Convert.ToDouble(A[i][j].Text) == 0) || (j == RsLocation))
+                                        continue;
+
+                                    double qik = Convert.ToDouble(A[i][j].Text);
+                                    qik -= Convert.ToDouble(A[main][j].Text) * Convert.ToDouble(A[i][RsLocation].Text) / Rs;
+                                    qik = Math.Round(qik, 2);
+                                    A[i][j].Text = qik.ToString();
+                                }
+                            }
+                            divide_the_row(ref A, ref B, RsLocation, main);
+                            sample.InsertText($"После обнуления x{RsLocation + 1} столбца");
+                            nullify_the_column(ref A, RsLocation, main);
+                            sample.InsertJordanTable(ref A, ref B, ref Marks, main, RsLocation);
+                            IfHasLineIsZero(ref A, ref B);
+                        }
+
+                        if (should_i_go)
+                        {
+                            sample.InsertText("Решённая таблица:");
+                            sample.InsertJordanTable(ref A, ref B, ref Marks, 0, -1);
+                            sample.InsertText("Ответ:");
+                            result(A, B);
+                        }
+                    }
+                    break;
             }
 
             sample.Close();
 
-            #endregion
-
             #region Functions
+
+            double finderror(ref List<double> X)
+            {
+                double max = 0;
+                for (int i = 0; i < X.Count / 2; i++)
+                {
+                    if (Math.Abs(X[X.Count / 2 + i] - X[i]) > max)
+                        max = Math.Abs(X[X.Count / 2 + i] - X[i]);
+                }
+                return max;
+            }
+
+            double Calculations(ref List<List<TextBox>> A, ref List<double> X, int step)
+            {
+                double eq = 0;
+                for (int i = 0; i < A.Count; i++)
+                {
+                    if (i != step)
+                        eq -= Convert.ToDouble(A[step][i].Text) * X[i];
+                }
+                return eq;
+            }
+
+            void permutations(ref List<List<TextBox>> A, ref List<TextBox> B)
+            {
+                for (int column = 0; column < A.Count; column++)
+                {
+                    double max = 0;
+                    int maxlocation = column;
+                    int row = column;
+                    for (; row < A[column].Count - 1; row++)
+                    {
+                        if (Convert.ToDouble(A[row][column].Text) > max)
+                        {
+                            max = Convert.ToDouble(A[row][column].Text);
+                            maxlocation = row;
+                        }
+                    }
+                    if (max != 0)
+                    {
+                        List<TextBox> tempik = new();
+                        tempik = A[column];
+                        A[column] = A[maxlocation];
+                        A[maxlocation] = tempik;
+
+                        TextBox tempok = new();
+                        tempok = B[column];
+                        B[column] = B[maxlocation];
+                        B[maxlocation] = tempok;
+                    }
+                }
+            }
 
             int get_min(ref List<List<TextBox>> vec, int i, ref List<bool> mark)
             {
@@ -123,12 +204,12 @@ namespace AppWithUI
                 {
                     save = Convert.ToDouble(vec1[position][j].Text);
                     save /= aaa;
-                    save = Math.Round(save, 4);
+                    save = Math.Round(save, 2);
                     vec1[position][j].Text = save.ToString();
                 }
                 saveAgain = Convert.ToDouble(vec2[position].Text);
                 saveAgain /= aaa;
-                saveAgain = Math.Round(saveAgain, 4);
+                saveAgain = Math.Round(saveAgain, 2);
                 vec2[position].Text = saveAgain.ToString();
             }
 
@@ -200,7 +281,7 @@ namespace AppWithUI
                     string tempik = "";
                     for (int j = 0; j < a[i].Count - 1; j++)
                     {
-                        if (a[i][j].Text != "0")
+                        if (a[i][j].Text != "0" && a[i][j].Text != "-0")
                         {
                             if (inserted)
                             {
@@ -214,16 +295,11 @@ namespace AppWithUI
                             {
                                 tempik = "-";
                             }
-                            else if (string.Equals(a[i][j].Text, "-0"))
-                            {
-                                continue;
-                            }
                             else
                             {
                                 tempik = a[i][j].Text;
                             }
-
-                            holder += tempik + "X" + Utf_Version((j + 1).ToString());
+                            holder += tempik + "X" + sample.Utf_Version((j + 1).ToString());
                             inserted = true;
                         }
                     }
@@ -233,30 +309,7 @@ namespace AppWithUI
                 }
             }
 
-            string Utf_Version(string text)
-            {
-                if (string.Equals(text, "0"))
-                    return "\u2080";
-                else if (string.Equals(text, "1"))
-                    return "\u2081";
-                else if (string.Equals(text, "2"))
-                    return "\u2082";
-                else if (string.Equals(text, "3"))
-                    return "\u2083";
-                else if (string.Equals(text, "4"))
-                    return "\u2084";
-                else if (string.Equals(text, "5"))
-                    return "\u2085";
-                else if (string.Equals(text, "6"))
-                    return "\u2086";
-                else if (string.Equals(text, "7"))
-                    return "\u2087";
-                else if (string.Equals(text, "8"))
-                    return "\u2088";
-                else if (string.Equals(text, "9"))
-                    return "\u2089";
-                else return "";
-            }
+
 
             #endregion
         }
@@ -274,7 +327,6 @@ namespace AppWithUI
                 opara1 = wordGen.odoc.Content.Paragraphs.Add(ref wordGen.omissing);
                 opara1.Range.Text = "Решение системы:";
             }
-
             public void InsertText(string text)
             {
                 Word.Paragraph para;
@@ -286,7 +338,7 @@ namespace AppWithUI
                 wrdrng.Text = text;
                 wrdrng.OMaths.Add(wrdrng);
             }
-            public void InsertTable(ref List<List<TextBox>> v1, ref List<TextBox> v2, ref List<string> marks, int step, int location)
+            public void InsertJordanTable(ref List<List<TextBox>> v1, ref List<TextBox> v2, ref List<string> marks, int step, int location)
             {
                 int n = v1.Count;
                 int m = v1[0].Count - 1;
@@ -310,10 +362,6 @@ namespace AppWithUI
 
                 otable.Cell(2, 1).Range.Text = (step + 1).ToString();
 
-                //for RS logic here
-                //string conc = n.ToString() + " " + m.ToString();
-                //otable.Cell(2, 2).Range.Text = conc;
-
                 for (int i = 2; i < n + 2; i++)
                 {
                     for (int j = 3; j < m + 3; j++)
@@ -324,6 +372,80 @@ namespace AppWithUI
                 }
                 if (location != -1)
                     otable.Cell(step + 2, location + 3).Shading.BackgroundPatternColor = Word.WdColor.wdColorAqua;
+            }
+            public void insertHeader(ref List<double> X)
+            {
+                int size = 24;
+                Word.Table otable;
+                Word.Range wrdrng = wordGen.odoc.Bookmarks.get_Item(ref wordGen.oendofdoc).Range;
+                otable = wordGen.odoc.Tables.Add(wrdrng, 1, X.Count / 2 + 2, 1, 2);
+
+                otable.Cell(1, 1).PreferredWidth = 0.2f;
+                otable.Cell(1, 1).VerticalAlignment = Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
+                otable.Cell(1, 1).Range.Font.Size = size;
+                otable.Cell(1, 1).Range.Text = "K";
+
+                for (int i = 0; i < X.Count / 2; i++)
+                {
+                    // "X" + (i + 1);
+                    //string holda = "X" + Utf_Version((i + 1).ToString());
+                    otable.Cell(1, i + 2).Range.Font.Size = size;
+                    otable.Cell(1, i + 2).Range.Text = "X" + (i + 1);
+                    otable.Cell(1, i + 2).Range.ParagraphFormat.Alignment = Word.WdParagraphAlignment.wdAlignParagraphCenter;
+                    otable.Cell(1, i + 2).VerticalAlignment = Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
+                }
+                otable.Cell(1, X.Count / 2 + 2).Range.ParagraphFormat.Alignment = Word.WdParagraphAlignment.wdAlignParagraphCenter;
+                otable.Cell(1, X.Count / 2 + 2).VerticalAlignment = Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
+                otable.Cell(1, X.Count / 2 + 2).Range.Font.Size = size;
+                otable.Cell(1, X.Count / 2 + 2).Range.Text = "E";
+            }
+            public void InsertJacobiTable(ref List<double> X, int step, double epsilon)
+            {
+                int size = 24;
+                Word.Table otable;
+                Word.Range wrdrng = wordGen.odoc.Bookmarks.get_Item(ref wordGen.oendofdoc).Range;
+                otable = wordGen.odoc.Tables.Add(wrdrng, 1, X.Count / 2 + 2, 1, 2);
+
+                otable.Cell(step + 2, 1).PreferredWidth = 0.2f;
+                otable.Cell(step + 2, 1).VerticalAlignment = Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
+                otable.Cell(step + 2, 1).Range.Font.Size = size - 10;
+                otable.Cell(step + 2, 1).Range.Text = step.ToString();
+
+                for (int i = 0; i < X.Count / 2; i++)
+                {
+                    otable.Cell(step + 2, i + 2).Range.Font.Size = size - 10;
+                    otable.Cell(step + 2, i + 2).Range.ParagraphFormat.Alignment = Word.WdParagraphAlignment.wdAlignParagraphCenter;
+                    otable.Cell(step + 2, i + 2).VerticalAlignment = Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
+                    otable.Cell(step + 2, i + 2).Range.Text = Math.Round(X[i], 4).ToString();
+                }
+                otable.Cell(step + 2, X.Count / 2 + 2).Range.ParagraphFormat.Alignment = Word.WdParagraphAlignment.wdAlignParagraphCenter;
+                otable.Cell(step + 2, X.Count / 2 + 2).VerticalAlignment = Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
+                otable.Cell(step + 2, X.Count / 2 + 2).Range.Font.Size = size - 10;
+                otable.Cell(step + 2, X.Count / 2 + 2).Range.Text = Math.Round(epsilon, 4).ToString();
+            }
+            public string Utf_Version(string text)
+            {
+                if (string.Equals(text, "0"))
+                    return "\u2080";
+                else if (string.Equals(text, "1"))
+                    return "\u2081";
+                else if (string.Equals(text, "2"))
+                    return "\u2082";
+                else if (string.Equals(text, "3"))
+                    return "\u2083";
+                else if (string.Equals(text, "4"))
+                    return "\u2084";
+                else if (string.Equals(text, "5"))
+                    return "\u2085";
+                else if (string.Equals(text, "6"))
+                    return "\u2086";
+                else if (string.Equals(text, "7"))
+                    return "\u2087";
+                else if (string.Equals(text, "8"))
+                    return "\u2088";
+                else if (string.Equals(text, "9"))
+                    return "\u2089";
+                else return "";
             }
             public void Close()
             {
